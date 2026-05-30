@@ -5,31 +5,38 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-# 1. تحميل المفاتيح من ملف .env (الخزنة السرية)
+# تحميل المتغيرات من "Variables" في Railway
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# 2. إعداد Gemini
+# إعداد Gemini
 genai.configure(api_key=GEMINI_API_KEY)
+# استخدام نموذج Flash للسرعة والأداء العالي
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 3. دالة الرد الذكي
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     try:
-        # طلب الرد من Gemini
+        # إرسال الرسالة إلى Gemini وانتظار الرد
         response = model.generate_content(user_text)
+        # إرسال الرد للمستخدم
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response.text)
     except Exception as e:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="عذراً، حدث خطأ في معالجة الطلب.")
+        # في حال حدوث خطأ، نرسل رسالة واضحة
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="حدث خطأ في معالجة طلبك، الرجاء المحاولة لاحقاً.")
 
 if __name__ == '__main__':
-    # 4. تشغيل البوت باستخدام التوكن المستخرج من .env
+    print("Starting Dragon Engine...")
+    
+    # التحقق من وجود التوكن
     if not TELEGRAM_BOT_TOKEN:
-        print("خطأ: لم يتم العثور على TELEGRAM_BOT_TOKEN في ملف .env")
+        print("Error: TELEGRAM_BOT_TOKEN is missing!")
     else:
         application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+        
+        # إضافة المعالج
         application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+        
         print("Dragon Engine is running...")
         application.run_polling()
