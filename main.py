@@ -1,23 +1,26 @@
-import google.generativeai as genai
+import os
+from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-# ضع المفاتيح هنا مباشرة وبدون أي تردد (هذا للتجربة فقط)
-TELEGRAM_BOT_TOKEN = "8699507145:AAFmNuzqUllzZc3SnsZcXGTjTV8JbzwYOel"
-GEMINI_API_KEY = "AQ.Ab8RN6IgyecQXGyioTukzh7doiC5cKKdI6WHae_K0FHN9C1atA" 
-
-# إعداد Gemini
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+# استخدام GROQ_API_KEY الذي وضعناه
+client = OpenAI(
+    api_key=os.environ.get("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1"
+)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        response = model.generate_content(update.message.text)
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=response.text)
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": update.message.text}],
+            model="llama3-8b-8192",
+        )
+        reply = chat_completion.choices[0].message.content
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=reply)
     except Exception as e:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="خطأ في الاتصال.")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="حدث خطأ، تأكد من إعدادات البوت.")
 
 if __name__ == '__main__':
-    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    application.run_polling()
+    app = ApplicationBuilder().token(os.environ.get("TELEGRAM_BOT_TOKEN")).build()
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    app.run_polling()
